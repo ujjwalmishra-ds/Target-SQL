@@ -1,0 +1,461 @@
+Business Case Study: Analyzing Target's Operations in Brazil
+
+Objective: As a data analyst/scientist at Target, the goal is to analyze a dataset containing information about 100,000 orders placed in Brazil between 2016 and 2018. The aim is to extract valuable insights and provide actionable recommendations based on various dimensions, including order status, price, payment and freight performance, customer location, product attributes, and customer reviews.
+
+Data Exploration:
+Objective: Understand the structure and characteristics of the dataset.
+
+Data types of all columns in the "customers" table.
+
+    SELECT
+  column_name,
+  data_type
+FROM
+  `Traget.INFORMATION_SCHEMA.COLUMNS`
+WHERE
+  table_name = 'customers';
+
+
+
+Time range between which the orders were placed.
+
+SELECT
+  MIN(order_purchase_timestamp) Min_order_purchase_time,
+  MAX(order_purchase_timestamp) Max_order_puschase_time
+FROM
+  `Traget.orders`;
+
+
+
+Count the cities & states of customers who ordered during the given period.
+
+  SELECT
+  COUNT(DISTINCT customer_city) AS Total_City,
+  COUNT(DISTINCT customer_state) AS Total_State
+FROM
+  `Traget.customers`
+JOIN
+  `Traget.orders`
+USING
+  (customer_id);
+  
+
+
+Insights:
+Data types of customer table columns retrieved.
+Orders were placed between 2016-09-04 21:15:19 UTC and 2018-10-17 17:30:18 UTC.
+Total cities orders were placed are 4119, and total states are 27.
+
+In-depth Exploration:
+Objective: Explore trends and patterns in order placement.
+
+Growing trend in the number of orders placed over the past years.
+SELECT
+  EXTRACT(year
+  FROM
+    order_purchase_timestamp) AS Years,
+  COUNT(*) Total_orders_per_year
+FROM
+  `Traget.orders`
+GROUP BY
+  Years
+ORDER BY
+  Years;
+
+
+
+
+
+Monthly seasonality in terms of the number of orders.
+SELECT
+  EXTRACT(month
+  FROM
+    order_purchase_timestamp) AS Month,
+  COUNT(*) AS Total_order_per_month
+FROM
+  `Traget.orders`
+GROUP BY
+  Month
+ORDER BY
+  Total_order_per_month;
+
+
+
+
+
+Time of the day Brazilian customers mostly place orders.
+
+SELECT
+  CASE
+    WHEN EXTRACT(hour FROM order_purchase_timestamp) BETWEEN 0 AND 6 THEN 'Dawn'
+    WHEN EXTRACT(hour
+  FROM
+    order_purchase_timestamp) BETWEEN 7
+  AND 12 THEN 'Mornings'
+    WHEN EXTRACT(hour FROM order_purchase_timestamp) BETWEEN 13 AND 18 THEN 'Afternoon'
+  ELSE
+  'Night'
+END
+  AS Time_of_day,
+  COUNT(*) AS Total_no_of_orders
+FROM
+  `Traget.orders`
+GROUP BY
+  Time_of_day
+
+
+
+Insights:
+Significant growth in orders from 2016 to 2018.
+Monthly seasonality with peaks in August and December.
+Most orders are placed in the afternoon.
+
+
+Evolution of E-commerce Orders:
+Objective: Understand the month-on-month evolution of orders in each state and customer distribution.
+
+--Monthly number of orders placed in each state.
+SELECT
+  EXTRACT(MONTH
+  FROM
+    o.order_purchase_timestamp) AS Order_per_month,
+  COUNT(o.order_id) AS num_orders,
+  COUNT(DISTINCT c.customer_state) AS num_states
+FROM
+  `Traget.orders` o
+JOIN
+  `Traget.customers` c
+ON
+  o.customer_id = c.customer_id
+GROUP BY
+  Order_per_month
+ORDER BY
+  Order_per_month;
+
+
+
+
+Customer distribution across all states.
+SELECT
+  c.customer_state AS States,
+  COUNT(o.order_id) Order_per_states
+FROM
+  `Traget.orders` o
+JOIN
+  `Traget.customers` c
+ON
+  c.customer_id = o.customer_id
+GROUP BY
+  c.customer_state
+ORDER BY
+  Order_per_states ;
+
+
+
+
+Insights:
+Varying order volumes in different states.
+Highest customer concentration in São Paulo (SP).
+
+Impact on Economy:
+Objective: Analyze the financial aspects of e-commerce.
+
+% increase in the cost of orders from 2017 to 2018.
+SELECT
+  ROUND(((SUM(
+        IF
+          (EXTRACT(YEAR
+            FROM
+              o.order_purchase_timestamp) = 2018
+            AND EXTRACT(MONTH
+            FROM
+              o.order_purchase_timestamp) BETWEEN 1
+            AND 8, oi.price, 0)) - SUM(
+        IF
+          (EXTRACT(YEAR
+            FROM
+              o.order_purchase_timestamp) = 2017
+            AND EXTRACT(MONTH
+            FROM
+              o.order_purchase_timestamp) BETWEEN 1
+            AND 8, oi.price, 0))) * 100) / SUM(
+    IF
+      (EXTRACT(YEAR
+        FROM
+          o.order_purchase_timestamp) = 2018
+        AND EXTRACT(MONTH
+        FROM
+          o.order_purchase_timestamp) BETWEEN 1
+        AND 8, oi.price, 0)),2 )AS percent_increase
+FROM
+  `Traget.order_items` oi
+JOIN
+  `Traget.orders` o
+USING
+  (order_id)
+
+
+
+Total & Average value of order price for each state.
+SELECT
+  c.customer_state,
+  ROUND(SUM(p.payment_value), 2) Total_value_per_state,
+  ROUND(AVG(p.payment_value),2 )Average_value_per_state
+FROM
+  `Traget.customers` c
+INNER JOIN
+  `Traget.orders` o
+USING
+  (customer_id)
+INNER JOIN
+  `Traget.payments` p
+USING
+  (order_id)
+GROUP BY
+  c.customer_state
+ORDER BY
+  Total_value_per_state,
+  Average_value_per_state DESC;
+
+
+
+
+Total & Average value of order freight for each state.
+SELECT
+  c.customer_state,
+  ROUND(SUM(o.freight_value), 2) Total_freight_value_per_state,
+  ROUND(AVG(o.freight_value),2 )Average_freight_value_per_state
+FROM
+  `Traget.customers` c
+INNER JOIN
+  `Traget.orders` os
+USING
+  (customer_id)
+INNER JOIN
+  `Traget.order_items` o
+USING
+  (order_id)
+INNER JOIN
+  `Traget.payments` p
+USING
+  (order_id)
+GROUP BY
+  c.customer_state
+ORDER BY
+  Total_freight_value_per_state DESC;
+
+
+
+
+
+Insights:
+57.85% increase in order costs from 2017 to 2018.
+São Paulo (SP) has the highest total order value and lowest average freight value.
+
+
+Analysis based on Sales, Freight, and Delivery Time:
+Objective: Evaluate delivery efficiency and customer satisfaction.
+
+Number of days taken to deliver each order and the difference between estimated & actual delivery date.
+SELECT
+  order_id,
+  (EXTRACT(DAY
+    FROM
+      order_delivered_customer_date) - EXTRACT(DAY
+    FROM
+      order_purchase_timestamp)) AS delivery_time,
+  (EXTRACT(DAY
+    FROM
+      order_estimated_delivery_date) - EXTRACT(DAY
+    FROM
+      order_delivered_customer_date)) AS diff_estimated_delivery
+FROM
+  `Traget.orders`;
+
+
+                               
+
+
+Top 5 states with the highest & lowest average freight value.
+SELECT
+  c.customer_state,
+  ROUND(AVG(oi.freight_value),2) AS Highest_avg_freight_value
+FROM
+  `Traget.customers` c
+JOIN
+  `Traget.orders` o
+USING
+  (customer_id)
+JOIN
+  `Traget.order_items` oi
+USING
+  (order_id)
+GROUP BY
+  c.customer_state
+ORDER BY
+  Highest_avg_freight_value DESC
+LIMIT
+  5;
+
+
+
+
+
+SELECT
+  ROUND(AVG(oi.freight_value),2) AS lowest_avg_freight_value
+FROM
+  `Traget.customers` c
+JOIN
+  `Traget.orders` o
+USING
+  (customer_id)
+JOIN
+  `Traget.order_items` oi
+USING
+  (order_id)
+GROUP BY
+  c.customer_state
+ORDER BY
+  lowest_avg_freight_value
+LIMIT
+  5;
+
+
+
+
+
+Top 5 states with the highest & lowest average delivery time.
+SELECT
+  c.customer_state,
+  ROUND(AVG(EXTRACT(DAY
+      FROM
+        order_delivered_customer_date) - EXTRACT(DAY
+      FROM
+        order_purchase_timestamp)), 2) AS Average_delivery_time
+FROM
+  `Traget.customers` c
+JOIN
+  `Traget.orders` o
+USING
+  (customer_id)
+GROUP BY
+  c.customer_state
+ORDER BY
+  Average_delivery_time DESC
+LIMIT
+  5;
+
+
+
+
+SELECT
+  c.customer_state,
+  ROUND(AVG(EXTRACT(DAY
+      FROM
+        order_delivered_customer_date) - EXTRACT(DAY
+      FROM
+        order_purchase_timestamp)), 2) AS Average_delivery_time
+FROM
+  `Traget.customers` c
+JOIN
+  `Traget.orders` o
+USING
+  (customer_id)
+GROUP BY
+  c.customer_state
+ORDER BY
+  Average_delivery_time ASC
+LIMIT
+  5;
+
+
+
+
+
+Top 5 states where order delivery is faster compared to the estimated date.
+SELECT
+  c.customer_state,
+  ABS(ROUND(AVG(EXTRACT(DAY
+        FROM
+          o.order_estimated_delivery_date) - EXTRACT(DAY
+        FROM
+          o.order_delivered_customer_date)),2 ))AS day_difference
+FROM
+  `Traget.customers` c
+JOIN
+  `Traget.orders` o
+USING
+  (customer_id)
+GROUP BY
+  c.customer_state
+ORDER BY
+  day_difference ASC
+LIMIT
+  5 ;
+
+
+
+
+
+Insights:
+São Paulo (SP) has the highest average freight value, while Roraima (RR) has the lowest.
+São Paulo (SP) has the fastest delivery time, while Acre (AC) has the slowest.
+
+Analysis based on Payments:
+Objective: Explore payment trends and installment information.
+
+Month-on-month number of orders placed using different payment types.
+SELECT
+  EXTRACT(month
+  FROM
+    o.order_purchase_timestamp ) AS order_month,
+  COUNT(*) AS Number_of_orders,
+  p.payment_type
+FROM
+  `Traget.payments` p
+JOIN
+  `Traget.orders` o
+USING
+  (order_id)
+GROUP BY
+  order_month,
+  p.payment_type
+ORDER BY
+  order_month,
+  Number_of_orders
+
+
+
+
+Number of orders placed on the basis of the payment installments that have been paid.
+SELECT
+  COUNT(o.order_id) No_of_orders,
+  p.payment_installments
+FROM
+  `Traget.payments` p
+JOIN
+  `Traget.orders` o
+USING
+  (order_id)
+GROUP BY
+  p.payment_installments
+ORDER BY
+  No_of_orders
+
+
+
+
+Insights:
+Payment distribution across months and payment types.
+Majority of orders are placed with a single payment installment.
+
+
+
+Actionable Insights & Recommendations:
+
+Optimize Delivery in Acre (AC): Address the longer delivery times in Acre to improve customer satisfaction.
+Freight Cost Review in São Paulo (SP): Evaluate and potentially optimize freight costs in São Paulo to enhance overall profitability.
+Payment Installment Awareness: Communicate the benefits of single payment installments to customers for a smoother transaction process.
+Promote Afternoon Shopping: Leverage the insight that most orders are placed in the afternoon to run targeted promotions during this time.
+
+Conclusion:Analyzing Target's operations in Brazil revealed significant insights into order trends, financial performance, and customer behavior. These insights provide a foundation for strategic decision-making to enhance operational efficiency and customer experience.
